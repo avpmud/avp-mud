@@ -1,4 +1,4 @@
-package constants
+package constant
 
 const (
 	// WELCOME is the welcome message first displayed to users on first connection
