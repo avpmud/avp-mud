@@ -2,6 +2,7 @@ package avp
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strings"
 
@@ -23,6 +24,7 @@ type Client struct {
 // ListenAndServe concurrently handles read/writes for a Client.
 func (c *Client) ListenAndServe(conn net.Conn, mud *MUD) *Client {
 	// Initial configuration
+	c.conn = conn
 	c.mud = mud
 	c.State = new(state.State)
 	c.State.Transaction(func(s *state.State) {
@@ -79,9 +81,11 @@ func (c *Client) Process(msg string) {
 			c.Write <- "That's no name!\n\nWhat's your name, soldier? "
 			return
 		}
+		name := strings.ToUpper(string(kwarg[0][0])) + kwarg[0][1:]
 		c.User.Transaction(func(u *user.User) {
-			u.Name = strings.ToUpper(string(kwarg[0][0])) + kwarg[0][1:]
+			u.Name = name
 		})
+		c.mud.BroadcastAll(fmt.Sprintf("[INFO] %s has entered the realm.\n", name), true)
 		c.State.Transaction(func(s *state.State) {
 			s.State = state.STATE_MAIN
 		})

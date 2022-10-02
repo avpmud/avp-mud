@@ -15,4 +15,7 @@ func init() {
 
 	// Initialize commands
 	COMMANDS[state.STATE_MAIN]["chat"] = CMD_CHAT
+	COMMANDS[state.STATE_MAIN]["quit"] = CMD_QUIT
+	COMMANDS[state.STATE_MAIN]["tell"] = CMD_TELL
+	COMMANDS[state.STATE_MAIN]["who"] = CMD_WHO
 }
