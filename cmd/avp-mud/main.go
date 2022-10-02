@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/avpmud/avp-mud"
+	avp "github.com/avpmud/avp-mud"
 )
 
 var mud = new(avp.MUD)

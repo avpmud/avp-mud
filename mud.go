@@ -13,6 +13,20 @@ type MUD struct {
 	listener net.Listener
 }
 
+// BroadcastAll broadcasts a message to all connected clients.
+func (m *MUD) BroadcastAll(msg string, mustLoggedIn bool) {
+	m.RLock()
+	defer m.RUnlock()
+	for _, client := range m.clients {
+		if mustLoggedIn {
+			if !client.State.IsLoggedIn() {
+				continue
+			}
+		}
+		client.Write <- msg
+	}
+}
+
 // CallbackErr handles errors encountered by goroutines spawned by the MUD.
 func (m *MUD) CallbackErr(err error) {
 	log.Println(err)
