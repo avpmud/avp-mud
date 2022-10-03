@@ -28,7 +28,7 @@ func (c *Client) ListenAndServe(conn net.Conn, mud *MUD) *Client {
 	c.mud = mud
 	c.State = new(state.State)
 	c.State.Transaction(func(s *state.State) {
-		s.State = state.STATE_LOGIN
+		s.State = state.STATE_LOGIN_NAME
 	})
 	c.User = new(user.User)
 	c.Write = make(chan string)
@@ -43,8 +43,8 @@ func (c *Client) ListenAndServe(conn net.Conn, mud *MUD) *Client {
 			for {
 				msg, err = readwriter.ReadString('\n')
 				if err != nil {
-					c.conn.Close()
 					mud.CallbackErr(err)
+					c.Quit()
 					return
 				}
 				c.Process(input.Sanitize(msg))
@@ -57,11 +57,12 @@ func (c *Client) ListenAndServe(conn net.Conn, mud *MUD) *Client {
 			msg = <-c.Write
 			if _, err = readwriter.WriteString(msg); err != nil {
 				mud.CallbackErr(err)
+				c.Quit()
 				return
 			}
 			if err = readwriter.Flush(); err != nil {
-				c.conn.Close()
 				mud.CallbackErr(err)
+				c.Quit()
 				return
 			}
 		}
@@ -73,34 +74,49 @@ func (c *Client) ListenAndServe(conn net.Conn, mud *MUD) *Client {
 	return c
 }
 
+// Process processes commands.
 func (c *Client) Process(msg string) {
 	kwarg := strings.Split(msg, " ")
 
-	if !c.State.IsLoggedIn() {
-		if len(kwarg[0]) < 4 {
-			c.Write <- "That's no name!\n\nWhat's your name, soldier? "
-			return
-		}
-		name := strings.ToUpper(string(kwarg[0][0])) + kwarg[0][1:]
-		c.User.Transaction(func(u *user.User) {
-			u.Name = name
-		})
-		c.mud.BroadcastAll(fmt.Sprintf("[INFO] %s has entered the realm.\n", name), true)
-		c.State.Transaction(func(s *state.State) {
-			s.State = state.STATE_MAIN
-		})
-		return
-	}
-
 	c.State.RLock()
-	state := c.State.State
+	st := c.State.State
 	c.State.RUnlock()
 
-	handler, present := COMMANDS[state][strings.ToLower(kwarg[0])]
-	if !present {
-		c.Write <- "Huh?\n"
-		return
+	switch st {
+	case state.STATE_LOGIN_NAME, state.STATE_LOGIN_PASSWORD:
+		c.ProcessLogin(kwarg, st)
+	case state.STATE_CREATE_CONFIRM, state.STATE_CREATE_PASSWORD, state.STATE_CREATE_RACE:
+		c.ProcessCreate(kwarg, st)
+	case state.STATE_MAIN, state.STATE_MAIN_COMBAT:
+		handler, present := COMMANDS[st][strings.ToLower(kwarg[0])]
+		if !present {
+			c.Write <- "Huh?\n"
+			return
+		}
+		handler(kwarg, c)
+	default:
+		c.Write <- fmt.Sprintf("error, invalid state: %v\n", st)
+		c.mud.CallbackErr(fmt.Errorf("error, invalid state: %v", st))
+	}
+}
+
+// Quit quits from the MUD.
+func (c *Client) Quit() {
+	c.mud.RLock()
+	clients := c.mud.clients
+	c.mud.RUnlock()
+
+	// Delete this client from the MUD
+	var nc []*Client
+	for _, cl := range clients {
+		if cl.conn != c.conn {
+			nc = append(nc, cl)
+		}
 	}
 
-	handler(kwarg, c)
+	c.mud.Lock()
+	c.mud.clients = nc
+	c.mud.Unlock()
+
+	c.conn.Close()
 }

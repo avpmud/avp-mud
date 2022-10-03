@@ -3,8 +3,13 @@ package state
 import "sync"
 
 const (
-	STATE_LOGIN = iota
+	STATE_LOGIN_NAME = iota
+	STATE_LOGIN_PASSWORD
 	STATE_MAIN
+	STATE_MAIN_COMBAT
+	STATE_CREATE_CONFIRM
+	STATE_CREATE_PASSWORD
+	STATE_CREATE_RACE
 )
 
 // State represents runtime user-related data.
@@ -17,7 +22,7 @@ type State struct {
 func (s *State) IsLoggedIn() bool {
 	s.RLock()
 	defer s.RUnlock()
-	return !(s.State == STATE_LOGIN)
+	return (s.State == STATE_MAIN || s.State == STATE_MAIN_COMBAT)
 }
 
 // Transaction performs a concurrent-safe write-based transaction on State.
