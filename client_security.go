@@ -9,7 +9,7 @@ const (
 	SALT = "AVPFOREVER"
 )
 
-// HashPassword produces a bcrypt hash from a given password after salting it.
+// HashPassword produces a sha256 hash from a given password after salting it.
 func HashPassword(password string) string {
 	hash := sha256.Sum256([]byte(SALT + password))
 	return fmt.Sprintf("%x", hash)
