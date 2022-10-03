@@ -1,1 +1,3 @@
 avp-mud
+lib/usr/*
+!lib/usr/.gitkeep
